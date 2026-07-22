@@ -34,5 +34,5 @@ if [ -d /etc/profile.d ]; then
 fi
 
 
-export PATH=$PATH:/opt/sophon/libsophon-current/bin:/sbin
+export PATH=$PATH:/opt/sophon/libsophon-current/bin:/sbin:/mnt/tools/bin
 export PYTHONPATH=/opt/sophon/libsophon-current/lib:$PYTHONPATH

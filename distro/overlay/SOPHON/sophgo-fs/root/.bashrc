@@ -90,7 +90,7 @@ alias l='ls -CF'
 if [ -f ~/.bash_aliases ]; then
     . ~/.bash_aliases
 fi
-export PATH=$PATH:/opt/sophon/libsophon-current/bin:/opt/sophon/sophon-ffmpeg-latest/bin
+export PATH=$PATH:/opt/sophon/libsophon-current/bin:/opt/sophon/sophon-ffmpeg-latest/bin:/mnt/tools/bin
 export PYTHONPATH=/opt/sophon/libsophon-current/lib:$PYTHONPATH:/opt/sophon/sophon-ffmpeg-latest/lib
 
 # enable programmable completion features (you don't need to enable
