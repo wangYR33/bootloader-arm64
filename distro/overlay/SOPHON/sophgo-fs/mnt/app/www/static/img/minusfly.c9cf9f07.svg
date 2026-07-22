@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #1f2d3d;
+        stroke: #1890e1;
+        stroke-width: 5px;
+        filter: url(#filter);
+      }
+
+      .cls-2 {
+        font-size: 125px;
+        fill: #aba8ad;
+        font-family: "Microsoft YaHei Mono";
+      }
+    </style>
+    <filter id="filter" x="30" y="28" width="153" height="153" filterUnits="userSpaceOnUse">
+      <feOffset result="offset" dx="5.734" dy="4.015" in="SourceAlpha"/>
+      <feGaussianBlur result="blur" stdDeviation="2.646"/>
+      <feFlood result="flood" flood-opacity="0.45"/>
+      <feComposite result="composite" operator="in" in2="blur"/>
+      <feBlend result="blend" in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <g style="fill: #1f2d3d; filter: url(#filter)">
+    <rect id="矩形_1" data-name="矩形 1" class="cls-1" x="30" y="30" width="140" height="140" style="stroke: inherit; filter: none; fill: inherit"/>
+  </g>
+  <use xlink:href="#矩形_1" style="stroke: #1890e1; filter: none; fill: none"/>
+  <text id="_-" data-name="-" class="cls-2" x="65.983" y="133.573">-</text>
+</svg>
