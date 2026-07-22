@@ -91,63 +91,95 @@ if [ $is_ubuntu -gt 1 ];then
 	echo "ubuntu"
 	device_path="/etc/netplan/01-netcfg.yaml"
 	#device_path="01-netcfg.yaml"
-	eth_num=$(grep -inr "$device:" $device_path | awk -F : '{print $1}')
-	num=$(($eth_num+5))
-	if [ ! $eth_num = "" ];then
-		for ((i=1; i<=15; i++))
-		do
-			num=$(($eth_num+$i))
-			c_str=$(sed -n "${num}p" $device_path | awk -F : '{print$1}')
-			echo $c_str
-			if [[ $c_str =~ "dhcp" ]] || [[ $c_str =~ "addresses" ]] || [[ $c_str =~ "gateway4" ]] || [[ $c_str =~ "nameservers" ]] || [[ $c_str =~ "optional" ]];then
-				d_str="${num}d"
-			elif [[ $c_str =~ "routes" ]]; then
-				d_str="$(($num+3))d"
-				i=$(($i+3))
-			elif [[ $c_str =~ "routing-policy" ]]; then
-				d_str="$(($num+4))d"
-				i=$(($i+4))
-			else
-				break;
-			fi
-		done
-		echo "$eth_num,$d_str"
-		sudo sed -i "$eth_num,$d_str" $device_path
-		sudo sync
-	fi
+	# Build the whole new file content in a local temp file and swap it into place
+	# with a single atomic "mv" at the end, instead of many separate "sudo tee -a"
+	# appends straight to the live netplan file. The previous incremental-append
+	# approach left the live file in syntactically-incomplete states (e.g. a
+	# "nameservers:" line written before its nested "addresses:" line landed) for
+	# the whole duration of the script, and netplan's own file-change watcher would
+	# occasionally parse the file in one of those half-written states and fail with
+	# "expected mapping (check indentation)". Writing to a temp file first and
+	# swapping it in means any watcher only ever sees the complete old file or the
+	# complete new one.
+	tmp_path=$(mktemp)
+
+	# Strip any existing config block for this device by indentation, not by a
+	# fixed line-count guess: a fixed-offset scan could leave duplicate
+	# "$device:" blocks behind whenever the block's shape didn't match the
+	# assumed layout, which in turn made a later grep for "$device:" match more
+	# than once and broke arithmetic that used to rely on there being exactly one.
+	awk -v dev="${device}:" '
+		{
+			line = $0
+			content = line
+			sub(/^[ \t]*/, "", content)
+			match(line, /^[ \t]*/)
+			indent = RLENGTH
+			if (skip && indent <= dev_indent) { skip = 0 }
+			if (!skip && content == dev) { skip = 1; dev_indent = indent; next }
+			if (skip) next
+			print line
+		}
+	' "$device_path" > "$tmp_path"
+
 	echo "add network config"
-	echo "                ${device}:" | sudo tee -a $device_path
-	echo "                        dhcp4: no" | sudo tee -a  $device_path
-	echo "                        addresses: [${ip}/${shortMask}]" | sudo tee -a  $device_path
-        if [ "$gateway" != "" ] && [[ "$device" == "enp3s0" || "$device" == "enp4s0" || "$device" == "eth0" || "$device" == "eth1" ]];then
-                echo "                        gateway4: $gateway" | sudo tee -a  $device_path
-        fi
-	echo "                        nameservers:" | sudo tee -a  $device_path
-	echo "                                addresses: [${dns}]" | sudo tee -a  $device_path
+	{
+		echo "                ${device}:"
+		echo "                        dhcp4: no"
+		echo "                        addresses: [${ip}/${shortMask}]"
+		echo "                        nameservers:"
+		echo "                                addresses: [${dns}]"
+
+		# gateway4 is deprecated by netplan -- use a default route instead. eth0's
+		# default route gets metric 200 so it's less preferred than eth1's, which
+		# keeps the (unset) default metric.
+		default_route=0
+		if [ "$gateway" != "" ] && [[ "$device" == "enp3s0" || "$device" == "enp4s0" || "$device" == "eth0" || "$device" == "eth1" ]];then
+			default_route=1
+		fi
+		static_route=0
 		if [ "$to_net" != "" ] && [ "$to_netmask" != "" ] && [ "$via" != "" ]; then
-                echo "                        routes:" | sudo tee -a  $device_path
-				echo "                                - to: ${to_net}/${to_shortMask}" | sudo tee -a  $device_path
-				echo "                                  via: ${via}" | sudo tee -a  $device_path
-				echo "                                  table: ${table}" | sudo tee -a  $device_path
-        fi
+			static_route=1
+		fi
+		if [ "$default_route" -eq 1 ] || [ "$static_route" -eq 1 ]; then
+			echo "                        routes:"
+			if [ "$default_route" -eq 1 ]; then
+				echo "                                - to: default"
+				echo "                                  via: ${gateway}"
+				if [ "$device" == "eth0" ]; then
+					echo "                                  metric: 200"
+				fi
+			fi
+			if [ "$static_route" -eq 1 ]; then
+				echo "                                - to: ${to_net}/${to_shortMask}"
+				echo "                                  via: ${via}"
+				echo "                                  table: ${table}"
+			fi
+		fi
 		if [ "$rule_to" != "" ] || [ "$rule_from" != "" ]; then
-                echo "                        routing-policy:" | sudo tee -a  $device_path
-        fi
+			echo "                        routing-policy:"
+		fi
 		if [ "$rule_to" != "" ] && [ "$rule_to_mask" != "" ]; then
-                echo "                                - to: ${rule_to}/${rule_to_shortMask}" | sudo tee -a  $device_path
-				echo "                                  table: ${table}" | sudo tee -a  $device_path
+			echo "                                - to: ${rule_to}/${rule_to_shortMask}"
+			echo "                                  table: ${table}"
 		elif [ "$rule_to" != "" ] && [ "$rule_to_mask" == "" ]; then
-				echo "                                - to: ${rule_to}" | sudo tee -a  $device_path
-				echo "                                  table: ${table}" | sudo tee -a  $device_path
-        fi
+			echo "                                - to: ${rule_to}"
+			echo "                                  table: ${table}"
+		fi
 		if [ "$rule_from" != "" ] && [ "$rule_from_mask" != "" ]; then
-                echo "                                - from: ${rule_from}/${rule_from_shortMask}" | sudo tee -a  $device_path
-				echo "                                  table: ${table}" | sudo tee -a  $device_path
+			echo "                                - from: ${rule_from}/${rule_from_shortMask}"
+			echo "                                  table: ${table}"
 		elif [ "$rule_from" != "" ] && [ "$rule_from_mask" == "" ]; then
-				echo "                                - from: ${rule_from}" | sudo tee -a  $device_path
-				echo "                                  table: ${table}" | sudo tee -a  $device_path
-        fi
-	echo "                        optional: yes" | sudo tee -a  $device_path
+			echo "                                - from: ${rule_from}"
+			echo "                                  table: ${table}"
+		fi
+		echo "                        optional: yes"
+	} | tee -a "$tmp_path"
+
+	sudo cp "$tmp_path" "${device_path}.new"
+	sudo chmod 600 "${device_path}.new"
+	sudo mv "${device_path}.new" "$device_path"
+	rm -f "$tmp_path"
 	sudo sync
 	sudo netplan apply
 

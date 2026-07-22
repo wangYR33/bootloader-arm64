@@ -1,0 +1,31 @@
+ [Unit]
+Description=App Monitor Service
+After=bmrt_setup.service mosquitto.service
+Wants=bmrt_setup.service mosquitto.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/mnt/app
+
+# ===== 在这里显式写入所有的 Qt 环境变量 =====
+Environment="QTDIR=/mnt/qt515"
+Environment="LD_LIBRARY_PATH=$QTDIR/lib:/mnt/tools/lib"
+Environment="QT_QPA_PLATFORM=linuxfb"
+Environment="QT_QPA_PLATFORM_PLUGIN_PATH=$QTDIR/plugins/platforms" 
+Environment="QT_PLUGIN_PATH=$QTDIR/plugins"
+Environment="QT_QPA_FONTDIR=$QTDIR/fonts"
+Environment="QML2_IMPORT_PATH=$QTDIR/qml"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="XDG_RUNTIME_DIR=/run/user/0"
+# ========================================
+
+ExecStart=/mnt/shell/init.sh
+
+StandardOutput=journal
+StandardError=journal
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
