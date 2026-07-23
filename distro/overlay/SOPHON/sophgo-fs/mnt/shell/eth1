@@ -1,5 +1,5 @@
 mode=static
-ipaddr=172.16.3.55
+ipaddr=172.168.1.20
 netmask=255.255.255.0
-gateway=172.16.3.3
+gateway=172.168.1.20
 dns=8.8.8.8

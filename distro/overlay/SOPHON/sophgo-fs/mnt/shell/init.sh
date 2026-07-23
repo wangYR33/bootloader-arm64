@@ -32,11 +32,9 @@ if systemctl is-enabled --quiet SophonHDMI; then
 fi
 
 cd /mnt/shell/
-# ./gpio_mux.sh
-./timeSync.sh
-#config network
-./set_ip.sh eth0
-./set_ip.sh eth1
+# time sync cost 1s , move to start service
+# ./timeSync.sh
+#config network move to netplan, it costs 7s
 
 source /mnt/shell/aliases.sh
 
