@@ -52,6 +52,20 @@ export PATH="$QTDIR/bin:$PATH"
 export LD_LIBRARY_PATH="$QTDIR/lib:$LD_LIBRARY_PATH"
 export PKG_CONFIG_PATH="$QTDIR/lib/pkgconfig:$PKG_CONFIG_PATH"
 export QT_QPA_FONTDIR=$QTDIR/fonts
-QML2_IMPORT_PATH=$QTDIR/qml
+export QML2_IMPORT_PATH=$QTDIR/qml
 
-exec ./appmon.exe -c ./appmon.conf
+
+TTY_DEV=$(tty)
+if [ -z "$TTY_DEV" ] || [ "$TTY_DEV" = "not a tty" ]; then
+    TTY_DEV=/dev/tty1   # fallback
+fi
+
+# Disable echo and canonical mode to stop the kernel TTY from echoing keystrokes
+stty -echo -icanon < "$TTY_DEV" > "$TTY_DEV" 2>/dev/null
+
+# Restore TTY settings no matter how the script exits
+trap 'stty sane < "$TTY_DEV" > "$TTY_DEV" 2>/dev/null' EXIT
+
+# Launch the Qt program with all standard streams redirected to null, so no text is ever printed to the screen
+exec ./appmon.exe -c ./appmon.conf < /dev/null > /dev/null 2>&1
+
