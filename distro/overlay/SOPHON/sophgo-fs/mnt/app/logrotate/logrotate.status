@@ -1,5 +1,0 @@
-logrotate state -- version 2
-"/mnt/app/log/nvr.log" 2026-7-21-17:0:0
-"/mnt/app/log/*.log" 2026-7-21-17:0:0
-"/mnt/app/log/appmon.log" 2026-7-21-17:0:0
-"/mnt/app/log/*.sslog" 2026-7-21-17:0:0
